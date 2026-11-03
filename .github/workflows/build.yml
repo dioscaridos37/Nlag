@@ -32,7 +32,15 @@ jobs:
 
       - name: Сборка APK
         working-directory: src
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon --console=plain 2>&1 | tee ../build.log
+
+      - name: Ошибки сборки (коротко)
+        if: failure()
+        run: |
+          echo "===== ОШИБКИ ====="
+          grep -nE "^e: |^e: file|What went wrong|Could not|error:|Unresolved|Manifest merger" -A4 build.log | head -80
 
       - name: Переименовать APK
         run: cp src/app/build/outputs/apk/release/app-release.apk NLAG-VPN.apk
