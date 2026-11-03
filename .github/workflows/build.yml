@@ -1,1 +1,51 @@
-.github/workflows/build.yml
+name: Build NLAG-VPN
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Распаковать исходники из zip в корне репозитория
+        run: |
+          ZIP=$(ls *.zip | head -n 1)
+          echo "Архив: $ZIP"
+          mkdir -p src
+          unzip -o "$ZIP" -d src
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+
+      - name: Сборка APK
+        working-directory: src
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Переименовать APK
+        run: cp src/app/build/outputs/apk/release/app-release.apk NLAG-VPN.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NLAG-VPN
+          path: NLAG-VPN.apk
+
+      - name: Релиз с прямой ссылкой на APK
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: NLAG-VPN build ${{ github.run_number }}
+          files: NLAG-VPN.apk
